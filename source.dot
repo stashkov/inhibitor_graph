@@ -1,0 +1,24 @@
+strict digraph  {
+	a -> w	 [label=1];
+	a -> q	 [label=1];
+	a -> h	 [color=red,
+		label=0];
+	b -> x	 [color=red,
+		label=0];
+	b -> q	 [label=1];
+	b -> n	 [color=red,
+		label=0];
+	d -> w	 [color=red,
+		label=0];
+	d -> k	 [color=red,
+		label=0];
+	d -> h	 [label=1];
+	c -> d	 [color=red,
+		label=0];
+	c -> q	 [label=1];
+	c -> p	 [label=1];
+	e -> x	 [label=1];
+	e -> z	 [color=red,
+		label=0];
+	e -> y	 [label=1];
+}
