@@ -130,7 +130,7 @@ def get_inhibition_degree(list_of_edges):
 
 
 """SET THE CURRENT GRAPH"""
-CURRENT_GRAPH = graph_X
+CURRENT_GRAPH = graph_II
 """SET THE CURRENT GRAPH"""
 
 in_degree = get_in_degree(CURRENT_GRAPH)
@@ -140,11 +140,11 @@ inhibited_edges = get_inhibited_edges(CURRENT_GRAPH)
 
 inhibition_degree = get_inhibition_degree(inhibited_edges)
 
-print 'graph dict: ', graph_dict
-print 'in_degree:  ', in_degree
-print 'out_degree: ', out_degree
-print 'inhibited:  ', inhibited_edges
-print 'inhib degr: ', inhibition_degree
+print 'input graph --------------->', graph_dict
+print 'in degree for each node --->', in_degree
+print 'out degree for each node -->', out_degree
+print 'inhibited edges ----------->', inhibited_edges
+print 'number of inhibited edges going into a node -->', inhibition_degree
 
 bin_of_edges = {}
 
@@ -181,7 +181,6 @@ for edge in inhibited_edges:
             if v in value:  # find nodes, other than u, going to v
                 if key != u:
                     new_node += 'not ' + key + ' + '
-        new_node = new_node[:-3]  # remove last 3 characters
         bin_of_edges[new_node + u] = v
         # CASE II.3
         new_node = ''
@@ -189,7 +188,6 @@ for edge in inhibited_edges:
             if v in value:  # find nodes, other than u, going to v
                 if key != u:
                     new_node += key + ' + '
-        new_node = new_node[:-3]  # remove last 3 characters
         bin_of_edges[new_node + 'not ' + u] = 'not ' + v
     if in_degree[v] > 1 and inhibition_degree[v] > 1 and \
        in_degree[v] != inhibition_degree[v]:  # CASE not yet exists :)
@@ -219,12 +217,15 @@ for edge in inhibited_edges:
         new_node = new_node[:-3]  # remove last 3 characters
         bin_of_edges[new_node] = 'not ' + v
 
-print bin_of_edges
+
+#print bin_of_edges
+
 
 # # print the output in human readable form
-# for key, value in bin_of_edges.items():
-#     print key, ' --> ', value
-
+print '----------------'
+for key, value in bin_of_edges.items():
+    print key, ' --> ', value
+print '----------------'
 
 for edge in inhibited_edges:
     u, v = edge
