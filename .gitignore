@@ -1,6 +1,15 @@
+# old versions
+default/
+v0.1/
+v0.15/
+v0.2/
+test.py
+.idea/
+
 # Windows image file caches
 Thumbs.db
 ehthumbs.db
+
 
 # Folder config file
 Desktop.ini

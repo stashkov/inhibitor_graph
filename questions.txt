@@ -1,7 +1,0 @@
-	case 1b
-	do we really delete this vertex? 
-	What does it mean to the rest of the graph?
-	i.e. a -> b -> c -> d
-	and we delete 'c'  ---- does it mean we also delete 'd' ? 
-	if it is a cyclic graph the whole thing will become empty graph
-
