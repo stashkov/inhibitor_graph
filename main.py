@@ -94,6 +94,11 @@ graph_test = [[0, 0, 1, 0, 0, 0, 0],
               [0, 0, 0, 0, 0, -1, 0],
               [0, 0, 0, 0, 0, 0, 1],
               [0, 0, 0, 0, 0, 0, 0]]
+graph_XXI = [[ 0, -1,  1,  1,  1],
+             [ 0,  0,  0,  1,  0],
+             [ 0,  0,  0,  0, -1],
+             [ 0,  0,  0,  0,  0],
+             [ 0,  0,  0,  0,  0]]
 
 
 def get_out_degree(adjacency_matrix):
@@ -159,91 +164,56 @@ def get_inhibition_degree(list_of_edges):
 
 
 def two_or_more_all_inhibited(graph_dict, u, v, bin_of_edges):
-    # CASE III.1
+    new_node = new_node_ = ''  # CASE III.2 and CASE III.3
     for key, value in graph_dict.items():
         if v in value:  # find nodes, other than u, going to v
-            bin_of_edges[key + '0'].add(v + '1')
-    # CASE III.4
-    for key, value in graph_dict.items():
-        if v in value:  # find nodes, other than u, going to v
-            bin_of_edges[key + '1'].add(v + '0')
-    # CASE II.2
-    new_node = ''
-    for key, value in graph_dict.items():
-        if v in value:  # find nodes, other than u, going to v
-            new_node += key + '0'
-    bin_of_edges[new_node].add(v + '1')
-    # CASE II.3
-    new_node = ''
-    for key, value in graph_dict.items():
-        if v in value:  # find nodes, other than u, going to v
-            new_node += key + '1'
-    bin_of_edges[new_node].add(v + '0')
+            bin_of_edges[key + '0'].add(v + '1')  # CASE III.1
+            bin_of_edges[key + '1'].add(v + '0')  # CASE III.4
+            new_node += key + '0'  # CASE III.2
+            new_node_ += key + '1'  # CASE III.3
+    bin_of_edges[new_node].add(v + '1')  # CASE III.2
+    bin_of_edges[new_node_].add(v + '0')  # CASE III.3
     return bin_of_edges
 
 
 def exactly_one_one_inhibited(graph_dict, u, v, bin_of_edges):
-    # CASE I.1
-    bin_of_edges[u + '0'].add(v + '1')
+    bin_of_edges[u + '0'].add(v + '1')  # CASE I.1
+    bin_of_edges[u + '1'].add(v + '0')  # CASE I.2
     for vertex in graph_dict[v]:
-        bin_of_edges[v + '1'].add(vertex + '1')
-    # CASE I.2
-    bin_of_edges[u + '1'].add(v + '0')
-    for vertex in graph_dict[v]:
-        # TODO here should be a check for A -| B -| C, do not remove C
-        # not sure if this is needed, since we are going to check for compatibility
-        # during graph assembly stage
-        # bin_of_edges['remove ' + v].add('remove ' + vertex)
-        bin_of_edges[v + '1'].add(vertex + '1')
+        bin_of_edges[v + '1'].add(vertex + '1')  # CASE I.1
+        # TODO: in case A-|B-|C we get 'B0':['C1','C0']
+        #bin_of_edges[v + '1'].add(vertex + '1')  # CASE I.2
     return bin_of_edges
 
 
 def more_than_one_one_inhibited(graph_dict, u, v, bin_of_edges):
-    # CASE II.1
-    bin_of_edges[u + '1'].add(v + '1')
+    bin_of_edges[u + '1'].add(v + '1')  # CASE II.1
+    bin_of_edges[u + '0'].add(v + '0')  # CASE II.4
+    new_node = new_node_ = ''  # CASE II.2 and CASE II.3
     for key, value in graph_dict.items():
         if v in value:  # find nodes, other than u, going to v
             if key != u:
-                bin_of_edges[key + '0'].add(v + '1')
-    # CASE II.4
-    bin_of_edges[u + '0'].add(v + '0')
-    for key, value in graph_dict.items():
-        if v in value:  # find nodes, other than u, going to v
-            if key != u:
-                bin_of_edges[key + '1'].add(v + '0')
-    # CASE II.2
-    new_node = ''
-    for key, value in graph_dict.items():
-        if v in value:  # find nodes, other than u, going to v
-            if key != u:
-                new_node += key + '0'
-    bin_of_edges[new_node + u + '1'].add(v + '1')
-    # CASE II.3
-    new_node = ''
-    for key, value in graph_dict.items():
-        if v in value:  # find nodes, other than u, going to v
-            if key != u:
-                new_node += key + '1'
-    bin_of_edges[new_node + u + '0'].add(v + '0')
+                bin_of_edges[key + '0'].add(v + '1')  # CASE II.1
+                bin_of_edges[key + '1'].add(v + '0')  # CASE II.4
+                new_node += key + '0'  # CASE II.2
+                new_node_ += key + '1'  # CASE II.3
+    bin_of_edges[new_node + u + '1'].add(v + '1')  # CASE II.2
+    bin_of_edges[new_node_ + u + '0'].add(v + '0')  # CASE II.3
     return bin_of_edges
 
 
 def more_than_one_no_inhibited(graph_dict, v, bin_of_edges):
-    # CASE II.1
-    new_node = ''
+    new_node = ''  # CASE VI.1
     for key, value in graph_dict.items():
         if v in value:  # find nodes, other than u, going to v
-            new_node += key + '1'
-    bin_of_edges[new_node].add(v + '1')
-    # CASE III.2
-    for key, value in graph_dict.items():
-        if v in value:  # find nodes, other than u, going to v
-            bin_of_edges[key + '1'].add(v + '1')
+            new_node += key + '1'  # CASE VI.1
+            bin_of_edges[key + '1'].add(v + '1')  # CASE VI.2
+    bin_of_edges[new_node].add(v + '1')  # CASE VI.1
     return bin_of_edges
 
 
 def exactly_one_no_inhibited(graph_dict, v, bin_of_edges):
-    # CASE II.1
+    # CASE V
     for key, value in graph_dict.items():
         if v in value:  # find nodes, other than u, going to v
             bin_of_edges[key + '1'].add(v + '1')
@@ -285,15 +255,16 @@ def main(adjacency_matrix):
             bin_of_edges = two_or_more_all_inhibited(graph_dict, u, v, bin_of_edges)
 
     for v in non_inhibited_vertices:
-        if in_degree[v] > 1:
+        if in_degree[v] > 1:  # CASE VI
             bin_of_edges = more_than_one_no_inhibited(graph_dict, v, bin_of_edges)
-        if in_degree[v] == 1:
+        if in_degree[v] == 1:  # CASE V
             bin_of_edges = exactly_one_no_inhibited(graph_dict, v, bin_of_edges)
 
     print ''
     print '-'*10 + 'result' + '-'*10
+    sep = max([len(x) for x in bin_of_edges.keys()])
     for key, value in bin_of_edges.items():
-        print key, ' --> ', value
+        print key, '--'*(sep-len(key)/2), '>', list(value)
     print '-'*26
     return bin_of_edges
 
@@ -304,7 +275,7 @@ def generate_adj_matrix(vertices, inhibition_degree=2):
     for i, row in enumerate(matrix):
         for j, element in enumerate(row):
             if i > j:
-                if row.count(-1) + row.count(1) == inhibition_degree:
+                if row.count(-1) == inhibition_degree:
                     matrix[i][j] = rnd.choice([0, 1])
                 else:
                     matrix[i][j] = rnd.choice([-1, 1, 0])
@@ -339,8 +310,8 @@ def draw_graph(adjacency_matrix):
 
 
 ##################
-#current_graph = generate_adj_matrix(4)
-current_graph = graph_test
+#current_graph = generate_adj_matrix(5)
+current_graph = graph_XXI
 ##################
 
 main(current_graph)
