@@ -2,6 +2,8 @@ import string
 import networkx as nx
 import matplotlib.pyplot as plt
 import numpy as np
+import random as rnd
+import copy
 from collections import defaultdict
 
 """
@@ -259,14 +261,17 @@ def main(adjacency_matrix):
             bin_of_edges = more_than_one_no_inhibited(graph_dict, v, bin_of_edges)
         if in_degree[v] == 1:  # CASE V
             bin_of_edges = exactly_one_no_inhibited(graph_dict, v, bin_of_edges)
+    return bin_of_edges
 
+
+def pretty_print(dictionary):
     print ''
     print '-'*10 + 'result' + '-'*10
-    sep = max([len(x) for x in bin_of_edges.keys()])
-    for key, value in bin_of_edges.items():
+    sep = max([len(x) for x in dictionary.keys()])
+    for key, value in dictionary.items():
         print key, '--'*(sep-len(key)/2), '>', list(value)
     print '-'*26
-    return bin_of_edges
+    return None
 
 
 def generate_adj_matrix(vertices, inhibition_degree=2):
@@ -308,14 +313,65 @@ def draw_graph(adjacency_matrix):
     return None
 
 
+def compatible_pool(dict_compatible, list_of_incompatible_nodes):
+    for key, value in dict_compatible.items():
+        if key in list_of_incompatible_nodes:
+            if key in dict_compatible.keys():
+                del dict_compatible[key]
+
+    for key, value in dict_compatible.items():
+        for x in list_of_incompatible_nodes:
+            if x in key:
+                if key in dict_compatible.keys():
+                    del dict_compatible[key]
+
+    for key, value in dict_compatible.items():
+        for node in list_of_incompatible_nodes:
+            if node in value:
+                if key in dict_compatible.keys():
+                    del dict_compatible[key]
+    return dict_compatible
+
+
+def incompatible_pool(random_node, dict_of_edges):
+    """based on a node and a graph dict return incompatible with that setup nodes"""
+    incompatible = list(dict_of_edges[random_node])
+    for i, string in enumerate(incompatible):  # swap 0's and 1's
+        incompatible[i] = string.replace('0', '2').replace('1', '0').replace('2', '1')
+    random_node = random_node.replace('0', '2').replace('1', '0').replace('2', '1')
+    incompatible.append(random_node)
+    return incompatible
+
 
 ##################
-#current_graph = generate_adj_matrix(5)
-current_graph = graph_XXI
+current_graph = generate_adj_matrix(20)
+#current_graph = graph_XXI
 ##################
 
-main(current_graph)
-draw_graph(current_graph)
+bin_of_edges = main(current_graph)
+pretty_print(bin_of_edges)
+#draw_graph(current_graph)
+
+
+#print rnd.choice([x for x in bin_of_edges.keys()])
+rnd_pick = 'A0'
+dict_compatible = copy.deepcopy(bin_of_edges)
+
+incompatible_nodes = incompatible_pool(rnd_pick, bin_of_edges)
+compatible_nodes_dict = compatible_pool(dict_compatible, incompatible_nodes)
+compatible_nodes_dict = defaultdict(list, ((k, list(v)) for k, v in compatible_nodes_dict.items()))
+compatible_nodes_dict = dict(compatible_nodes_dict)
+
+print incompatible_nodes
+pretty_print(compatible_nodes_dict)
+
+
+
+# rnd_pick = 'A1'
+# {'A1': ['C1', 'B0', 'E0', 'D1']}
+
+
+
 
 #main(graph_I)
 #main(graph_II)
