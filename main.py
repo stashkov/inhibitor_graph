@@ -210,6 +210,7 @@ def more_than_one_no_inhibited(graph_dict, v, bin_of_edges):
         if v in value:  # find nodes, other than u, going to v
             new_node += key + '1'  # CASE VI.1
             bin_of_edges[key + '1'].add(v + '1')  # CASE VI.2
+            bin_of_edges[key + '0'].add(v + '0')  # CASE VI.3 TODO add to latex
     bin_of_edges[new_node].add(v + '1')  # CASE VI.1
     return bin_of_edges
 
@@ -266,12 +267,12 @@ def main(adjacency_matrix):
 
 def pretty_print(dictionary):
     print ''
+    print 'number of keys in dict:', len(dictionary.keys())
     print '-'*10 + 'result' + '-'*10
     sep = max([len(x) for x in dictionary.keys()])
-    for key, value in dictionary.items():
+    for key, value in sorted(dictionary.items()):
         print key, '--'*(sep-len(key)/2), '>', list(value)
-    print '-'*26
-    return None
+    return '-'*26
 
 
 def generate_adj_matrix(vertices, inhibition_degree=2):
@@ -313,6 +314,21 @@ def draw_graph(adjacency_matrix):
     return None
 
 
+def compatible_pool_composite_node(dict_compatible, picked_node):
+    # if A1 was picked then A1B1 is incompatible
+    if len(picked_node) == 2:
+        for key, values in dict_compatible.items():
+            if key != picked_node and picked_node in key:
+                del dict_compatible[key]
+
+    # if A1B1 was picked then A1 and B1 are incompatible
+    if len(picked_node) > 2:
+        for key, values in dict_compatible.items():
+            if key != picked_node and key in picked_node:
+                del dict_compatible[key]
+    return dict_compatible
+
+
 def compatible_pool(dict_compatible, list_of_incompatible_nodes):
     for key, value in dict_compatible.items():
         if key in list_of_incompatible_nodes:
@@ -327,50 +343,96 @@ def compatible_pool(dict_compatible, list_of_incompatible_nodes):
 
     for key, value in dict_compatible.items():
         for node in list_of_incompatible_nodes:
-            if node in value:
-                if key in dict_compatible.keys():
-                    del dict_compatible[key]
+            if node in value:  # remove just that node
+                dict_compatible[key].remove(node)
+
+    for key, value in dict_compatible.items():
+        if dict_compatible[key] == set([]) or dict_compatible[key] == []:  # remove key if it has empty set
+            del dict_compatible[key]
+
     return dict_compatible
 
 
 def incompatible_pool(random_node, dict_of_edges):
     """based on a node and a graph dict return incompatible with that setup nodes"""
-    incompatible = list(dict_of_edges[random_node])
-    for i, string in enumerate(incompatible):  # swap 0's and 1's
-        incompatible[i] = string.replace('0', '2').replace('1', '0').replace('2', '1')
-    random_node = random_node.replace('0', '2').replace('1', '0').replace('2', '1')
-    incompatible.append(random_node)
+    if random_node in dict_of_edges.keys():
+        incompatible = list(dict_of_edges[random_node])
+        for i, string in enumerate(incompatible):  # swap 0's and 1's
+            incompatible[i] = string.replace('0', '2').replace('1', '0').replace('2', '1')
+        random_node = random_node.replace('0', '2').replace('1', '0').replace('2', '1')
+        incompatible.append(random_node)
+    else:
+        incompatible = []
     return incompatible
 
 
+
+def flatten_dict_to_list(dictionary):
+    all_nodes_values = {x for v in dictionary.itervalues() for x in v}
+    all_nodes_keys = {k for k in dictionary.keys()}
+    return sorted(list(all_nodes_values | all_nodes_keys))
+
+
+def intersection_with_negated_nodes(dictionary):
+    all_nodes = flatten_dict_to_list(dictionary)
+    all_nodes_negated = copy.deepcopy(all_nodes)
+    for i, string in enumerate(all_nodes_negated):  # swap 0's and 1's
+        all_nodes_negated[i] = string.replace('0', '2').replace('1', '0').replace('2', '1')
+    return set(all_nodes) & set(all_nodes_negated)
+
+#__________________________________________________________
+
 ##################
-current_graph = generate_adj_matrix(20)
-#current_graph = graph_XXI
+# current_graph = generate_adj_matrix(20)
+current_graph = graph_test
 ##################
 
 bin_of_edges = main(current_graph)
 pretty_print(bin_of_edges)
-#draw_graph(current_graph)
+# draw_graph(current_graph)
+
+import sys, pprint
+sys.setrecursionlimit(10000)
+print '\nSTARTING THE ALGO'
 
 
-#print rnd.choice([x for x in bin_of_edges.keys()])
-rnd_pick = 'A0'
-dict_compatible = copy.deepcopy(bin_of_edges)
+def recursive_teardown(my_dict, my_node):
+    width = 20
+    all_nodes = flatten_dict_to_list(my_dict)
+    print 'got node     :', my_node
+    print 'got dict     :'
+    pprint.pprint(my_dict, width=width)
+    print 'consisting of:', all_nodes
 
-incompatible_nodes = incompatible_pool(rnd_pick, bin_of_edges)
-compatible_nodes_dict = compatible_pool(dict_compatible, incompatible_nodes)
-compatible_nodes_dict = defaultdict(list, ((k, list(v)) for k, v in compatible_nodes_dict.items()))
-compatible_nodes_dict = dict(compatible_nodes_dict)
+    incompatible_nodes = incompatible_pool(my_node, my_dict)
+    my_dict = compatible_pool_composite_node(my_dict, my_node)
+    my_dict = compatible_pool(my_dict, incompatible_nodes)
 
-print incompatible_nodes
-pretty_print(compatible_nodes_dict)
+    import random
+    intrsctn = intersection_with_negated_nodes(my_dict)
+    if intrsctn == set([]):
+        print 'Unbelievable! We got a solution!!'
+        print 'the solution has following data:', pretty_print(my_dict)
+    if intrsctn != set([]):  # if not empty, pick at random and call again
+        print '\nafter this iteration we got:'
+        pprint.pprint(my_dict, width=width)
+        print 'but this graph is not compatible yet, because it has:', list(intrsctn)
+        print 'therefore recursive call initiated. Picking a random node from list above'
+        print ''
+        recursive_teardown(my_dict, random.choice(list(intrsctn)))
+        return None
+    return my_dict
 
 
+# make a normal dict istead of default dict
+bin_of_edges = defaultdict(list, ((k, list(v)) for k, v in bin_of_edges.items()))
+bin_of_edges = dict(bin_of_edges)
 
-# rnd_pick = 'A1'
-# {'A1': ['C1', 'B0', 'E0', 'D1']}
-
-
+all_nodes = flatten_dict_to_list(bin_of_edges)
+for node in all_nodes:
+    temp_dict = copy.deepcopy(bin_of_edges)
+    print '\nmain loop, picked node:', node
+    recursive_teardown(temp_dict, node)
 
 
 #main(graph_I)
