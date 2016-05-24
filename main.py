@@ -214,8 +214,8 @@ def pretty_print(dictionary):
     return '-'*26, 'Iteration Completed', '-'*26
 
 
-def compatible_pool_composite_node(d, node):
-    """given a dict and a node remove, incompatible with that node, nodes"""
+def remove_incompatible_nodes_1(d, node):
+    """process composite nodes"""
     if len(node) == 2:  # if A1 was picked then A1B1 is incompatible
         for key, values in d.items():
             if key != node and node in key:
@@ -229,32 +229,28 @@ def compatible_pool_composite_node(d, node):
     return d
 
 
-def compatible_pool(dict_compatible, list_of_incompatible_nodes):
-    for key, value in dict_compatible.items():
-        if key in list_of_incompatible_nodes:
-            if key in dict_compatible.keys():
-                del dict_compatible[key]
+def remove_incompatible_nodes_2(d, lst):
+    """the idea is to remove keys that are in lst and values that are in lst
+    and if values is emtpy - remove the key"""
 
-    for key, value in dict_compatible.items():
-        for x in list_of_incompatible_nodes:
-            if x in key:
-                if key in dict_compatible.keys():
-                    del dict_compatible[key]
+    for i in lst:  # if key is from lst, delete key
+        if i in d.keys():
+            del d[i]
 
-    for key, value in dict_compatible.items():
-        for node in list_of_incompatible_nodes:
-            if node in value:  # remove just that node
-                dict_compatible[key].remove(node)
+    for i in lst:  # if inside {key: value} value has an element from lst, remove that element
+        for key, value in d.items():
+            if i in value:
+                d[key].remove(i)
 
-    for key, value in dict_compatible.items():
-        if dict_compatible[key] == set([]) or dict_compatible[key] == []:  # remove key if it has empty set
-            del dict_compatible[key]
-
-    return dict_compatible
+    for key, value in d.items():
+        if value == []:
+            del d[key]
+    return d
 
 
-def incompatible_pool(node, d):
+def get_incompatible_nodes(node, d):
     """based on a node and a graph dict return list of incompatible with that setup nodes"""
+    all_nodes = flatten_dict_to_list(d)
     if len(node) > 2:  # given A1B0 incompatible are A1,A0,B1,B0, and anything that contains them
         inc_nodes = split_composite_node(node)  # split A1B0 to ['A1','B0']
         inc_nodes.extend(swap_0_and_1(inc_nodes))  # extend to [A1,B0,B1,A0]
@@ -266,12 +262,13 @@ def incompatible_pool(node, d):
     if len(node) == 2:  # given A1 incompatible are A0, and anything that contains A1 and A0
         inc_nodes = []
         swap_n = swap_0_and_1(node)  # assign [A0]
-        print 'swap_n', swap_n
         for e in all_nodes:  # look for anything that contains A0
             if swap_n in e:
                 inc_nodes.append(e)  # got A0B1, A0B0
         inc_nodes.append(swap_n)
-    print 'for a given %s, incompatible nodes are %s' % (node, list(set(inc_nodes)))
+    for item in copy.deepcopy(inc_nodes):
+        if item in d.keys():
+            inc_nodes.extend(d[item])
     return list(set(inc_nodes))
 
 
@@ -293,22 +290,18 @@ def flatten_dict_to_list(dictionary):
     all_nodes_keys = {k for k in dictionary.keys()}
     return sorted(list(all_nodes_values | all_nodes_keys))
 
-#TODO if picked B1 then A1B1 should also be incomaptible
 
-def intersection_with_negated_nodes(dictionary):
-    all_nodes = flatten_dict_to_list(dictionary)
-    all_nodes_negated = copy.deepcopy(all_nodes)
-    for i, string in enumerate(all_nodes_negated):  # swap 0's and 1's
-        all_nodes_negated[i] = string.replace('0', '2').replace('1', '0').replace('2', '1')
-    #TODO if node is A1B1 then A1 and B1 should be incompatible done as follows:
-    n = 2
-    composite_nodes_split = []
-    for node in all_nodes:  # split into chunks of len=2 (e.g. give A0B0 get [A0, B0]
-        if len(node) > n:
-            for x in [node[i * n:i * n + n] for i, blah in enumerate(node[::n])]:
-                composite_nodes_split.append(x)
-                composite_nodes_split.append(x.replace('0', '2').replace('1', '0').replace('2', '1'))
-    return set(all_nodes) & (set(all_nodes_negated) | set(composite_nodes_split))
+def intersection_with_negated_nodes(d):
+    all_nodes = flatten_dict_to_list(d)
+    all_nodes_negated = swap_0_and_1(copy.deepcopy(all_nodes))
+    inc_nodes_within = []  # e.g. when A1,B1 and A1B1 is present in all_nodes
+    for i in all_nodes:
+        for j in all_nodes:
+            if i != j and i in j:
+                inc_nodes_within.append(i)
+                inc_nodes_within.append(j)
+
+    return (set(all_nodes) & set(all_nodes_negated)) | set(inc_nodes_within)
 
 #__________________________________________________________
 
@@ -327,40 +320,47 @@ print '\nSTARTING THE ALGO'
 
 
 def recursive_teardown(my_dict, my_node):
-    width = 20
+    res = []
+    width = 30
     all_nodes = flatten_dict_to_list(my_dict)
-    print 'got node     :', my_node
-    print 'got dict     :'
-    pprint.pprint(my_dict, width=width)
-    #print 'consisting of:', all_nodes
+    # print 'got node     :', my_node
+    # print 'got dict     :'
+    # pprint.pprint(my_dict, width=width)
+    # print 'consisting of:', all_nodes
 
-    incompatible_nodes = incompatible_pool(my_node, my_dict)
-    print 'removing, associated with the list above, nodes...'
-    my_dict = compatible_pool_composite_node(my_dict, my_node)
-    my_dict = compatible_pool(my_dict, incompatible_nodes)
-
+    incompatible_nodes = get_incompatible_nodes(my_node, my_dict)
+    #print 'for a given %s, incompatible nodes are %s' % (my_node, incompatible_nodes)
+    #print 'removing, associated with the list above, nodes...'
+    my_dict = remove_incompatible_nodes_1(my_dict, my_node)
+    my_dict = remove_incompatible_nodes_2(my_dict, incompatible_nodes)
 
     intrsctn = intersection_with_negated_nodes(my_dict)
     if intrsctn == set([]):
-        print 'Unbelievable! We got a solution!!'
-        print 'the solution has following data:', pretty_print(my_dict)
-        return my_dict
-    if intrsctn != set([]):  # if not empty, pick at random and call again
-        print '\nafter this iteration we got:'
-        pprint.pprint(my_dict, width=width)
-        print 'but this graph is not compatible yet, because it has:', list(intrsctn)
-        print 'therefore recursive call initiated. Picking a random node from list above'
-        print ''
+        # print 'Unbelievable! We got a solution!!'
+        # pprint.pprint(my_dict, width=width)
+        res.append(my_dict)
+        with open('res.txt', 'a') as f:
+            f.write(str(res)+'\n')
+
+    else:  # intrsctn != set([]):  # if not empty, pick at random and call again
+        # print '\nafter this iteration we got:'
+        # pprint.pprint(my_dict, width=width)
+        # print 'but this graph is not compatible yet, because it has:', list(intrsctn)
+        # print 'therefore recursive call initiated. Picking first node from list above'
+        # print ''
         for x in list(intrsctn):
             temp_dict_ = copy.deepcopy(my_dict)
             recursive_teardown(temp_dict_, x)
-        #recursive_teardown(my_dict, random.choice(list(intrsctn)))
-    return my_dict
+    #print res
+    return res
 
 
 # make a normal dict istead of default dict
 bin_of_edges = defaultdict(list, ((k, list(v)) for k, v in bin_of_edges.items()))
 bin_of_edges = dict(bin_of_edges)
+
+# erase contents of the file
+open('res.txt', 'w').close()
 
 all_nodes = flatten_dict_to_list(bin_of_edges)
 result = []
@@ -368,8 +368,7 @@ for node in all_nodes:
     temp_dict = copy.deepcopy(bin_of_edges)
     print '\nmain loop, picked node:', node
     #result.append(recursive_teardown(temp_dict, node))
-    a = recursive_teardown(temp_dict, node)
-    result.append(a)
+    recursive_teardown(temp_dict, node)
 
 
 
@@ -377,17 +376,18 @@ for node in all_nodes:
 print ''
 print '-------final res--------'
 print len(result)
+print 'by item:'
+for item in result:
+    print item
 print '-----dedup----------'
-
-
 final = []
 for x in result:
     if x not in final:
         final.append(x)
 
+print 'length of results list: %s' % len(final)
 
-print len(final)
-
+print 'by item:'
 for item in final:
     print item
 
