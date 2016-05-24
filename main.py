@@ -1,11 +1,7 @@
-import string
-import networkx as nx
-import matplotlib.pyplot as plt
-import numpy as np
-import random as rnd
 import copy
 from collections import defaultdict
-import random
+
+import graphtools
 
 """
 input: graph as an adjacency matrix, where 1 means regular edge, -1 means inhibited edge
@@ -104,68 +100,6 @@ graph_XXI = [[ 0, -1,  1,  1,  1],
              [ 0,  0,  0,  0,  0]]
 
 
-def get_out_degree(adjacency_matrix):
-    vertices = list(string.ascii_uppercase[0:len(adjacency_matrix)])
-    dict_out_degree = {}
-    for vertex in vertices:
-        dict_out_degree[vertex] = 0
-    row_number = 0
-    for row in adjacency_matrix:
-        for value in row:
-            if abs(value) == 1:
-                dict_out_degree[vertices[row_number]] += 1
-        row_number += 1
-    return dict_out_degree
-
-
-def get_in_degree(adjacency_matrix):
-    vertices = list(string.ascii_uppercase[0:len(adjacency_matrix)])
-    dict_in_degree = {}
-    for vertex in vertices:
-        dict_in_degree[vertex] = 0
-    adjacency_matrix_transpose = [list(i) for i in zip(*adjacency_matrix)]
-    row_number = 0
-    for row in adjacency_matrix_transpose:
-        for value in row:
-            if abs(value) == 1:
-                dict_in_degree[vertices[row_number]] += 1
-        row_number += 1
-    return dict_in_degree
-
-
-def get_inhibited_edges(adjacency_matrix):
-    vertices = list(string.ascii_uppercase[0:len(adjacency_matrix)])
-    inhibited_edges = []
-    for i in range(len(adjacency_matrix)):
-        for j in range(len(adjacency_matrix)):
-            if adjacency_matrix[i][j] == -1:
-                inhibited_edges.append((vertices[i], vertices[j]))
-    return inhibited_edges
-
-
-def convert_adj_matrix_to_dict(adjacency_matrix):
-    vertices = list(string.ascii_uppercase[0:len(adjacency_matrix)])
-    graph_dict = {}
-    for vertex in vertices:
-        graph_dict[vertex] = []
-    for i in range(len(adjacency_matrix)):
-        for j in range(len(adjacency_matrix)):
-            if abs(adjacency_matrix[i][j]) == 1:
-                graph_dict[vertices[i]].append(str(vertices[j]))
-    return graph_dict
-
-
-def get_inhibition_degree(list_of_edges):
-    inhibition_degree = {}
-    for edge in list_of_edges:
-        u, v = edge
-        if v not in inhibition_degree.keys():
-            inhibition_degree[v] = 1
-        else:
-            inhibition_degree[v] += 1
-    return inhibition_degree
-
-
 def two_or_more_all_inhibited(graph_dict, u, v, bin_of_edges):
     new_node = new_node_ = ''  # CASE III.2 and CASE III.3
     for key, value in graph_dict.items():
@@ -225,12 +159,12 @@ def exactly_one_no_inhibited(graph_dict, v, bin_of_edges):
 
 
 def main(adjacency_matrix):
-    in_degree = get_in_degree(adjacency_matrix)
-    out_degree = get_out_degree(adjacency_matrix)
-    graph_dict = convert_adj_matrix_to_dict(adjacency_matrix)
-    inhibited_edges = get_inhibited_edges(adjacency_matrix)
+    in_degree = graphtools.get_in_degree(adjacency_matrix)
+    out_degree = graphtools.get_out_degree(adjacency_matrix)
+    graph_dict = graphtools.convert_adj_matrix_to_dict(adjacency_matrix)
+    inhibited_edges = graphtools.get_inhibited_edges(adjacency_matrix)
 
-    inhibition_degree = get_inhibition_degree(inhibited_edges)
+    inhibition_degree = graphtools.get_inhibition_degree(inhibited_edges)
 
     vertices = set(graph_dict.keys())
     inhibited_vertices = set([edge[1] for edge in inhibited_edges])
@@ -280,59 +214,19 @@ def pretty_print(dictionary):
     return '-'*26, 'Iteration Completed', '-'*26
 
 
-def generate_adj_matrix(vertices, inhibition_degree=2):
-    """generate square matrix with max inihigibiton degree"""
-    import random as rnd
-    matrix = [[0 for x in range(vertices)] for y in range(vertices)]
-    for i, row in enumerate(matrix):
-        for j, element in enumerate(row):
-            if i > j:
-                if row.count(-1) == inhibition_degree:
-                    matrix[i][j] = rnd.choice([0, 1])
-                else:
-                    matrix[i][j] = rnd.choice([-1, 1, 0])
-
-    matrix = [list(i) for i in zip(*matrix)]
-    return matrix
-
-
-def draw_graph(adjacency_matrix):
-    matrix = np.matrix(adjacency_matrix)
-    graph = nx.from_numpy_matrix(matrix, create_using=nx.DiGraph())
-    print matrix
-
-    vertices = list(string.ascii_uppercase[0:len(adjacency_matrix)])
-    labels = {i: vertex for (i, vertex) in enumerate(vertices)}
-
-    edge_color = ['b' if x == 1 else 'r' for row in adjacency_matrix for x in row if x in [-1, 1]]
-    width = [1*len(edge_color)]
-    node_color = ['w' for _ in edge_color]
-
-    nx.draw(graph,
-            node_size=5000,
-            labels=labels,
-            with_labels=True,
-            font_size=30,
-            edge_color=edge_color,
-            width=width,
-            node_color=node_color)
-    plt.show()
-    return None
-
-
-def compatible_pool_composite_node(dict_compatible, picked_node):
-    # if A1 was picked then A1B1 is incompatible
-    if len(picked_node) == 2:
-        for key, values in dict_compatible.items():
-            if key != picked_node and picked_node in key:
-                del dict_compatible[key]
-
-    # if A1B1 was picked then A1 and B1 are incompatible
-    if len(picked_node) > 2:
-        for key, values in dict_compatible.items():
-            if key != picked_node and key in picked_node:
-                del dict_compatible[key]
-    return dict_compatible
+def compatible_pool_composite_node(d, node):
+    """given a dict and a node remove, incompatible with that node, nodes"""
+    if len(node) == 2:  # if A1 was picked then A1B1 is incompatible
+        for key, values in d.items():
+            if key != node and node in key:
+                del d[key]
+    elif len(node) > 2:  # if A1B1 was picked then A1 and B1 are incompatible
+        for key, values in d.items():
+            if key != node and key in node:
+                del d[key]
+    else:  # there is no such case
+        pass
+    return d
 
 
 def compatible_pool(dict_compatible, list_of_incompatible_nodes):
@@ -359,42 +253,39 @@ def compatible_pool(dict_compatible, list_of_incompatible_nodes):
     return dict_compatible
 
 
-def incompatible_pool(random_node, dict_of_edges):
-    import itertools
-    """based on a node and a graph dict return incompatible with that setup nodes"""
-    #print 'diagnostic info:'
-    #print 'random node:',random_node
-    #print 'chain:', flatten_dict_to_list(dict_of_edges)
-    if random_node in dict_of_edges.keys(): # TODO refactor this...
-        incompatible = list(dict_of_edges[random_node])
-        for i, string in enumerate(incompatible):  # swap 0's and 1's
-            incompatible[i] = string.replace('0', '2').replace('1', '0').replace('2', '1')
-        random_node = random_node.replace('0', '2').replace('1', '0').replace('2', '1')
-        incompatible.append(random_node)
-        n = 2
-        #print 'incompatible inside function1', incompatible
-        for node in incompatible: # split into chunks of len=2 (e.g. give A0B0 get [A0, B0]
-            if len(node) > n:
-                #print 'node inside function1', node
-                for x in [node[i * n:i * n + n] for i, blah in enumerate(node[::n])]:
-                    incompatible.append(x)
-                    incompatible.append(x.replace('0', '2').replace('1', '0').replace('2', '1'))
-                incompatible.remove(node)
-    else:
-        incompatible = []
-        random_node = random_node.replace('0', '2').replace('1', '0').replace('2', '1')
-        incompatible.append(random_node)
-        n = 2
-        #print 'incompatible inside function', incompatible
-        for node in incompatible:  # split into chunks of len=2 (e.g. give A0B0 get [A0, B0]
-            if len(node) > n:
-                #print 'node inside function', node
-                for x in [node[i * n:i * n + n] for i, blah in enumerate(node[::n])]:
-                    incompatible.append(x)
-                    incompatible.append(x.replace('0', '2').replace('1', '0').replace('2', '1'))
-                incompatible.remove(node)
-    return incompatible
+def incompatible_pool(node, d):
+    """based on a node and a graph dict return list of incompatible with that setup nodes"""
+    if len(node) > 2:  # given A1B0 incompatible are A1,A0,B1,B0, and anything that contains them
+        inc_nodes = split_composite_node(node)  # split A1B0 to ['A1','B0']
+        inc_nodes.extend(swap_0_and_1(inc_nodes))  # extend to [A1,B0,B1,A0]
+        inc_nodes.append(swap_0_and_1(node))  # add A0B1 (reverse of original)
+        for node in copy.deepcopy(inc_nodes):
+            for e in all_nodes:  # TODO this can be done better
+                if node in e:
+                    inc_nodes.append(e)  # append any composite node which contains inc_nodes
+    if len(node) == 2:  # given A1 incompatible are A0, and anything that contains A1 and A0
+        inc_nodes = []
+        swap_n = swap_0_and_1(node)  # assign [A0]
+        print 'swap_n', swap_n
+        for e in all_nodes:  # look for anything that contains A0
+            if swap_n in e:
+                inc_nodes.append(e)  # got A0B1, A0B0
+        inc_nodes.append(swap_n)
+    print 'for a given %s, incompatible nodes are %s' % (node, list(set(inc_nodes)))
+    return list(set(inc_nodes))
 
+
+def split_composite_node(s):
+    """given string A1B0 returns list [A1, B0]"""
+    return [s[i * 2:i * 2 + 2] for i, blah in enumerate(s[::2])]
+
+def swap_0_and_1(args):
+    if isinstance(args, list):
+        for i, string in enumerate(args):
+            args[i] = string.replace('0', '2').replace('1', '0').replace('2', '1')
+    if isinstance(args, str):
+        args = args.replace('0', '2').replace('1', '0').replace('2', '1')
+    return args
 
 
 def flatten_dict_to_list(dictionary):
@@ -422,7 +313,7 @@ def intersection_with_negated_nodes(dictionary):
 #__________________________________________________________
 
 ##################
-#current_graph = generate_adj_matrix(20)
+#current_graph = graphtools.generate_adj_matrix(20)
 current_graph = graph_test
 ##################
 
@@ -444,7 +335,6 @@ def recursive_teardown(my_dict, my_node):
     #print 'consisting of:', all_nodes
 
     incompatible_nodes = incompatible_pool(my_node, my_dict)
-    print 'generated incompatible nodes:', incompatible_nodes
     print 'removing, associated with the list above, nodes...'
     my_dict = compatible_pool_composite_node(my_dict, my_node)
     my_dict = compatible_pool(my_dict, incompatible_nodes)
@@ -500,6 +390,7 @@ print len(final)
 
 for item in final:
     print item
+
 #main(graph_I)
 #main(graph_II)
 #main(graph_III)
