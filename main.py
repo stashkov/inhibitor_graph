@@ -5,6 +5,7 @@ import numpy as np
 import random as rnd
 import copy
 from collections import defaultdict
+import random
 
 """
 input: graph as an adjacency matrix, where 1 means regular edge, -1 means inhibited edge
@@ -280,6 +281,7 @@ def pretty_print(dictionary):
 
 
 def generate_adj_matrix(vertices, inhibition_degree=2):
+    """generate square matrix with max inihigibiton degree"""
     import random as rnd
     matrix = [[0 for x in range(vertices)] for y in range(vertices)]
     for i, row in enumerate(matrix):
@@ -400,14 +402,22 @@ def flatten_dict_to_list(dictionary):
     all_nodes_keys = {k for k in dictionary.keys()}
     return sorted(list(all_nodes_values | all_nodes_keys))
 
+#TODO if picked B1 then A1B1 should also be incomaptible
 
 def intersection_with_negated_nodes(dictionary):
     all_nodes = flatten_dict_to_list(dictionary)
     all_nodes_negated = copy.deepcopy(all_nodes)
     for i, string in enumerate(all_nodes_negated):  # swap 0's and 1's
         all_nodes_negated[i] = string.replace('0', '2').replace('1', '0').replace('2', '1')
-    #TODO if node is A1B1 then A1 and B1 should be incompatible
-    return set(all_nodes) & set(all_nodes_negated)
+    #TODO if node is A1B1 then A1 and B1 should be incompatible done as follows:
+    n = 2
+    composite_nodes_split = []
+    for node in all_nodes:  # split into chunks of len=2 (e.g. give A0B0 get [A0, B0]
+        if len(node) > n:
+            for x in [node[i * n:i * n + n] for i, blah in enumerate(node[::n])]:
+                composite_nodes_split.append(x)
+                composite_nodes_split.append(x.replace('0', '2').replace('1', '0').replace('2', '1'))
+    return set(all_nodes) & (set(all_nodes_negated) | set(composite_nodes_split))
 
 #__________________________________________________________
 
@@ -439,11 +449,12 @@ def recursive_teardown(my_dict, my_node):
     my_dict = compatible_pool_composite_node(my_dict, my_node)
     my_dict = compatible_pool(my_dict, incompatible_nodes)
 
-    import random
+
     intrsctn = intersection_with_negated_nodes(my_dict)
     if intrsctn == set([]):
         print 'Unbelievable! We got a solution!!'
         print 'the solution has following data:', pretty_print(my_dict)
+        return my_dict
     if intrsctn != set([]):  # if not empty, pick at random and call again
         print '\nafter this iteration we got:'
         pprint.pprint(my_dict, width=width)
@@ -452,9 +463,8 @@ def recursive_teardown(my_dict, my_node):
         print ''
         for x in list(intrsctn):
             temp_dict_ = copy.deepcopy(my_dict)
-            return recursive_teardown(temp_dict_, x)
+            recursive_teardown(temp_dict_, x)
         #recursive_teardown(my_dict, random.choice(list(intrsctn)))
-        return None
     return my_dict
 
 
@@ -467,7 +477,9 @@ result = []
 for node in all_nodes:
     temp_dict = copy.deepcopy(bin_of_edges)
     print '\nmain loop, picked node:', node
-    result.append(recursive_teardown(temp_dict, node))
+    #result.append(recursive_teardown(temp_dict, node))
+    a = recursive_teardown(temp_dict, node)
+    result.append(a)
 
 
 
