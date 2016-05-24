@@ -291,7 +291,7 @@ def flatten_dict_to_list(dictionary):
     return sorted(list(all_nodes_values | all_nodes_keys))
 
 
-def intersection_with_negated_nodes(d):
+def is_compatible(d):
     all_nodes = flatten_dict_to_list(d)
     all_nodes_negated = swap_0_and_1(copy.deepcopy(all_nodes))
     inc_nodes_within = []  # e.g. when A1,B1 and A1B1 is present in all_nodes
@@ -303,23 +303,8 @@ def intersection_with_negated_nodes(d):
 
     return (set(all_nodes) & set(all_nodes_negated)) | set(inc_nodes_within)
 
-#__________________________________________________________
 
-##################
-#current_graph = graphtools.generate_adj_matrix(20)
-current_graph = graph_test
-##################
-
-bin_of_edges = main(current_graph)
-pretty_print(bin_of_edges)
-# draw_graph(current_graph)
-
-import sys, pprint
-sys.setrecursionlimit(10000)
-print '\nSTARTING THE ALGO'
-
-
-def recursive_teardown(my_dict, my_node):
+def teardown(my_dict, my_node):
     res = []
     width = 30
     all_nodes = flatten_dict_to_list(my_dict)
@@ -333,26 +318,23 @@ def recursive_teardown(my_dict, my_node):
     #print 'removing, associated with the list above, nodes...'
     my_dict = remove_incompatible_nodes_1(my_dict, my_node)
     my_dict = remove_incompatible_nodes_2(my_dict, incompatible_nodes)
+    return my_dict
 
-    intrsctn = intersection_with_negated_nodes(my_dict)
-    if intrsctn == set([]):
-        # print 'Unbelievable! We got a solution!!'
-        # pprint.pprint(my_dict, width=width)
-        res.append(my_dict)
-        with open('res.txt', 'a') as f:
-            f.write(str(res)+'\n')
 
-    else:  # intrsctn != set([]):  # if not empty, pick at random and call again
-        # print '\nafter this iteration we got:'
-        # pprint.pprint(my_dict, width=width)
-        # print 'but this graph is not compatible yet, because it has:', list(intrsctn)
-        # print 'therefore recursive call initiated. Picking first node from list above'
-        # print ''
-        for x in list(intrsctn):
-            temp_dict_ = copy.deepcopy(my_dict)
-            recursive_teardown(temp_dict_, x)
-    #print res
-    return res
+# __________________________________________________________
+
+##################
+current_graph = graph_test
+#current_graph = graphtools.generate_adj_matrix(20)
+##################
+
+bin_of_edges = main(current_graph)
+pretty_print(bin_of_edges)
+# draw_graph(current_graph)
+
+import sys, pprint
+sys.setrecursionlimit(99999999)
+print '\nSTARTING THE ALGO'
 
 
 # make a normal dict istead of default dict
@@ -360,36 +342,51 @@ bin_of_edges = defaultdict(list, ((k, list(v)) for k, v in bin_of_edges.items())
 bin_of_edges = dict(bin_of_edges)
 
 # erase contents of the file
-open('res.txt', 'w').close()
+open('result.txt', 'w').close()
+output_file = open('result.txt', 'w')
+
+
+def write_to_file(string):
+    global output_file
+    output_file.write(string)
+
+
 
 all_nodes = flatten_dict_to_list(bin_of_edges)
 result = []
 for node in all_nodes:
-    temp_dict = copy.deepcopy(bin_of_edges)
     print '\nmain loop, picked node:', node
-    #result.append(recursive_teardown(temp_dict, node))
-    recursive_teardown(temp_dict, node)
+    temp_dict = copy.deepcopy(bin_of_edges)
+    temp_dict = teardown(temp_dict, node)
+    intersect = is_compatible(temp_dict)
+    while intersect:
+        temp_dict = copy.deepcopy(bin_of_edges)
+        for item in intersect:
+            temp_dict = teardown(temp_dict, item)
+            intersect = is_compatible(temp_dict)
+            print item
+            print intersect
 
 
 
 
-print ''
-print '-------final res--------'
-print len(result)
-print 'by item:'
-for item in result:
-    print item
-print '-----dedup----------'
-final = []
-for x in result:
-    if x not in final:
-        final.append(x)
+    # # check if compatible
+    # intrsctn = is_compatible(temp_dict)
+    # print temp_dict
+    # print 'we got intersection: %s' % intrsctn
+    # for x in list(intrsctn):
+    #     while intrsctn != set([]):
+    #         temp_dict_ = copy.deepcopy(temp_dict)
+    #         print 'teardown %s on node %s' % (temp_dict_, x)
+    #         temp_recursive_call = teardown(temp_dict_, x)
+    #         intrsctn = is_compatible(temp_recursive_call)
+    #         print intrsctn
+    # if intrsctn == set([]):  # 'Unbelievable! We got a solution!!'
+    #     print 'result', temp_dict
+    #     write_to_file(str(temp_dict) + '\n')
 
-print 'length of results list: %s' % len(final)
 
-print 'by item:'
-for item in final:
-    print item
+
 
 #main(graph_I)
 #main(graph_II)
