@@ -339,8 +339,7 @@ def recursive_teardown(my_dict, my_node):
         # print 'Unbelievable! We got a solution!!'
         # pprint.pprint(my_dict, width=width)
         res.append(my_dict)
-        with open('res.txt', 'a') as f:
-            f.write(str(res)+'\n')
+        write_to_file(str(res)+'\n')
 
     else:  # intrsctn != set([]):  # if not empty, pick at random and call again
         # print '\nafter this iteration we got:'
@@ -360,7 +359,13 @@ bin_of_edges = defaultdict(list, ((k, list(v)) for k, v in bin_of_edges.items())
 bin_of_edges = dict(bin_of_edges)
 
 # erase contents of the file
-open('res.txt', 'w').close()
+open('result.txt', 'w').close()
+output_file = open('result.txt', 'w')
+
+
+def write_to_file(string):
+    global output_file
+    output_file.write(string)
 
 all_nodes = flatten_dict_to_list(bin_of_edges)
 result = []
