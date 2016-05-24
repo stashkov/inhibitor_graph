@@ -1,7 +1,9 @@
 import copy
 from collections import defaultdict
-
+import sys
 import graphtools
+import pprint
+
 
 """
 input: graph as an adjacency matrix, where 1 means regular edge, -1 means inhibited edge
@@ -253,7 +255,8 @@ def get_incompatible_nodes(node, d):
     all_nodes = flatten_dict_to_list(d)
     if len(node) > 2:  # given A1B0 incompatible are A1,A0,B1,B0, and anything that contains them
         inc_nodes = split_composite_node(node)  # split A1B0 to ['A1','B0']
-        inc_nodes.extend(swap_0_and_1(inc_nodes))  # extend to [A1,B0,B1,A0]
+        swp = swap_0_and_1(inc_nodes)
+        inc_nodes.extend(swp)  # extend to [A1,B0,B1,A0]
         inc_nodes.append(swap_0_and_1(node))  # add A0B1 (reverse of original)
         for node in copy.deepcopy(inc_nodes):
             for e in all_nodes:  # TODO this can be done better
@@ -269,12 +272,14 @@ def get_incompatible_nodes(node, d):
     for item in copy.deepcopy(inc_nodes):
         if item in d.keys():
             inc_nodes.extend(d[item])
+    #TODO if node is A0B1C0 it does not says that A1B0 is incompatible
     return list(set(inc_nodes))
 
 
 def split_composite_node(s):
     """given string A1B0 returns list [A1, B0]"""
     return [s[i * 2:i * 2 + 2] for i, blah in enumerate(s[::2])]
+
 
 def swap_0_and_1(args):
     if isinstance(args, list):
@@ -301,57 +306,46 @@ def intersection_with_negated_nodes(d):
                 inc_nodes_within.append(i)
                 inc_nodes_within.append(j)
 
-    return (set(all_nodes) & set(all_nodes_negated)) | set(inc_nodes_within)
+    return set(all_nodes) & (set(all_nodes_negated) | set(inc_nodes_within))
 
-#__________________________________________________________
+
+def recursive_teardown(my_dict, my_node):
+    width = 30
+    write_to_file(logs_file, 'Given (%s)-dict :%s' % (len(my_dict), my_dict) + '\n')
+    incompatible_nodes = get_incompatible_nodes(my_node, my_dict)
+    write_to_file(logs_file, 'For a given %s, incompatible nodes are %s' % (my_node, incompatible_nodes) + '\n')
+    write_to_file(logs_file, '...removing, associated with the list above, nodes...' + '\n')
+    my_dict = remove_incompatible_nodes_1(my_dict, my_node)
+    my_dict = remove_incompatible_nodes_2(my_dict, incompatible_nodes)
+
+    intrsctn = intersection_with_negated_nodes(my_dict)
+    if intrsctn == set([]):
+        write_to_file(logs_file, '!!!Unbelievable!!! We got a solution!!!' + '\n')
+        #write_to_file(logs_file, str(pprint.pprint(my_dict, width=width)) + '\n')
+        write_to_file(results_file, str(my_dict) + '\n')
+
+    else:  # intrsctn != set([]):  # if not empty pick elements from it sequentially
+        for x in list(intrsctn):
+            write_to_file(logs_file, '\nAfter this iteration we got' + '\n')
+            write_to_file(logs_file, 'Dict of len %s :\n%s' % (len(my_dict), my_dict) + '\n')
+            write_to_file(logs_file, '\nBut this graph is not final, because it has: %s' % list(intrsctn) + '\n')
+            write_to_file(logs_file, 'from the list above pick: %s' % x + '\n')
+            temp_dict_ = copy.deepcopy(my_dict)
+            a = recursive_teardown(temp_dict_, x)
+            write_to_file(logs_file, 'Result dict is:\n%s' % a + '\n')
+            write_to_file(logs_file, '\n')
+    return my_dict
 
 ##################
-#current_graph = graphtools.generate_adj_matrix(20)
-current_graph = graph_test
+current_graph = graphtools.generate_adj_matrix(20)
+#current_graph = graph_test
 ##################
 
 bin_of_edges = main(current_graph)
 pretty_print(bin_of_edges)
 # draw_graph(current_graph)
 
-import sys, pprint
-sys.setrecursionlimit(10000)
-print '\nSTARTING THE ALGO'
-
-
-def recursive_teardown(my_dict, my_node):
-    res = []
-    width = 30
-    all_nodes = flatten_dict_to_list(my_dict)
-    # print 'got node     :', my_node
-    # print 'got dict     :'
-    # pprint.pprint(my_dict, width=width)
-    # print 'consisting of:', all_nodes
-
-    incompatible_nodes = get_incompatible_nodes(my_node, my_dict)
-    #print 'for a given %s, incompatible nodes are %s' % (my_node, incompatible_nodes)
-    #print 'removing, associated with the list above, nodes...'
-    my_dict = remove_incompatible_nodes_1(my_dict, my_node)
-    my_dict = remove_incompatible_nodes_2(my_dict, incompatible_nodes)
-
-    intrsctn = intersection_with_negated_nodes(my_dict)
-    if intrsctn == set([]):
-        # print 'Unbelievable! We got a solution!!'
-        # pprint.pprint(my_dict, width=width)
-        res.append(my_dict)
-        write_to_file(str(res)+'\n')
-
-    else:  # intrsctn != set([]):  # if not empty, pick at random and call again
-        # print '\nafter this iteration we got:'
-        # pprint.pprint(my_dict, width=width)
-        # print 'but this graph is not compatible yet, because it has:', list(intrsctn)
-        # print 'therefore recursive call initiated. Picking first node from list above'
-        # print ''
-        for x in list(intrsctn):
-            temp_dict_ = copy.deepcopy(my_dict)
-            recursive_teardown(temp_dict_, x)
-    #print res
-    return res
+sys.setrecursionlimit(999999)
 
 
 # make a normal dict istead of default dict
@@ -360,46 +354,44 @@ bin_of_edges = dict(bin_of_edges)
 
 # erase contents of the file
 open('result.txt', 'w').close()
-output_file = open('result.txt', 'w')
+results_file = open('result.txt', 'w')
+# erase contents of the file
+open('logs.txt', 'w').close()
+logs_file = open('logs.txt', 'w')
 
 
-def write_to_file(string):
-    global output_file
-    output_file.write(string)
+def write_to_file(f, string):
+    f.write(string)
+
+
+def dedupe_file(f):
+    unique_results = open('unique_result.txt', 'w')
+    lines_seen = set()
+    for line in open(f, 'r'):
+        if line not in lines_seen:
+            unique_results.write(line)
+            lines_seen.add(line)
+    unique_results.close()
 
 all_nodes = flatten_dict_to_list(bin_of_edges)
 result = []
-for node in all_nodes:
+
+write_to_file(logs_file, 'We are given:\n %s' % bin_of_edges + '\n')
+write_to_file(logs_file, 'Therefore all nodes are:\n %s' % all_nodes + '\n')
+write_to_file(logs_file, 'We are going to go through them sequentially.')
+write_to_file(logs_file, '\n\n\n\n')
+
+for i, node in enumerate(all_nodes):
+    print 'currently on node %s out of %s' % (i+1, len(all_nodes))
     temp_dict = copy.deepcopy(bin_of_edges)
-    print '\nmain loop, picked node:', node
-    #result.append(recursive_teardown(temp_dict, node))
+    write_to_file(logs_file, 'main loop, picked node: %s' % node + '\n')
     recursive_teardown(temp_dict, node)
+    write_to_file(logs_file, '\n\n\n\n')
 
 
 
 
-print ''
-print '-------final res--------'
-print len(result)
-print 'by item:'
-for item in result:
-    print item
-print '-----dedup----------'
-final = []
-for x in result:
-    if x not in final:
-        final.append(x)
+results_file.close()
+dedupe_file('result.txt')
 
-print 'length of results list: %s' % len(final)
-
-print 'by item:'
-for item in final:
-    print item
-
-#main(graph_I)
-#main(graph_II)
-#main(graph_III)
-#main(graph_IV)
-#main(graph_V)
-#main(graph_VI)
-
+print '\nNumber of unique solutions: %s' % sum(1 for line in open('unique_result.txt'))
