@@ -79,5 +79,21 @@ def generate_adj_matrix(vertices, inhibition_degree=2):
     return matrix
 
 
-def convert_doct_to_adj_matrix(dictionary):
-    pass #TODO order dict by key, then enumerate alphabet if == then 1
+def flatten_dict_to_list(d):
+    all_nodes_values = {x for v in d.itervalues() for x in v}
+    all_nodes_keys = {k for k in d.keys()}
+    return sorted(list(all_nodes_values | all_nodes_keys))
+
+
+def convert_dict_to_adj_matrix(d):
+    all_nodes = flatten_dict_to_list(d)
+    m = []
+    for v in all_nodes:
+        if v in d.keys():
+            m.append([1 if e in d[v] else 0 for e in all_nodes])
+        else:
+            m.append([0] * len(all_nodes))
+    return m
+
+
+

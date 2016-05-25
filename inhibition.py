@@ -3,6 +3,7 @@ from collections import defaultdict
 import sys
 import graphtools
 import pprint
+import string
 
 
 """
@@ -160,7 +161,7 @@ def exactly_one_no_inhibited(graph_dict, v, bin_of_edges):
     return bin_of_edges
 
 
-def main(adjacency_matrix):
+def generate_bin_of_edges(adjacency_matrix):
     in_degree = graphtools.get_in_degree(adjacency_matrix)
     out_degree = graphtools.get_out_degree(adjacency_matrix)
     graph_dict = graphtools.convert_adj_matrix_to_dict(adjacency_matrix)
@@ -290,22 +291,21 @@ def swap_0_and_1(args):
     return args
 
 
-def flatten_dict_to_list(dictionary):
-    all_nodes_values = {x for v in dictionary.itervalues() for x in v}
-    all_nodes_keys = {k for k in dictionary.keys()}
+def flatten_dict_to_list(d):
+    all_nodes_values = {x for v in d.itervalues() for x in v}
+    all_nodes_keys = {k for k in d.keys()}
     return sorted(list(all_nodes_values | all_nodes_keys))
 
 
 def intersection_with_negated_nodes(d):
     all_nodes = flatten_dict_to_list(d)
     all_nodes_negated = swap_0_and_1(copy.deepcopy(all_nodes))
-    inc_nodes_within = []  # e.g. when A1,B1 and A1B1 is present in all_nodes
+    inc_nodes_within = []  # is incompatible if A1,B1,A1B1 are present in all_nodes
     for i in all_nodes:
         for j in all_nodes:
             if i != j and i in j:
                 inc_nodes_within.append(i)
                 inc_nodes_within.append(j)
-
     return set(all_nodes) & (set(all_nodes_negated) | set(inc_nodes_within))
 
 
@@ -337,13 +337,16 @@ def recursive_teardown(my_dict, my_node):
     return my_dict
 
 ##################
-current_graph = graphtools.generate_adj_matrix(20)
-#current_graph = graph_test
+#current_graph = graphtools.generate_adj_matrix(20)
+current_graph = graph_test
 ##################
 
-bin_of_edges = main(current_graph)
+# visualize the graph
+from graphviz import draw_graph
+draw_graph(current_graph)
+
+bin_of_edges = generate_bin_of_edges(current_graph)
 pretty_print(bin_of_edges)
-# draw_graph(current_graph)
 
 sys.setrecursionlimit(999999)
 
@@ -395,3 +398,12 @@ results_file.close()
 dedupe_file('result.txt')
 
 print '\nNumber of unique solutions: %s' % sum(1 for line in open('unique_result.txt'))
+
+
+from graphtools import convert_dict_to_adj_matrix
+with open('unique_result.txt', 'r') as f:
+    for line in f:
+        d = eval(line)
+        m = convert_dict_to_adj_matrix(d)
+        labels = flatten_dict_to_list(d)
+        draw_graph(m, labels)
